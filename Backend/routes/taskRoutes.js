@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
+const { sendNotification } = require('../services/notificationService');
 
 router.post('/', auth(), async (req, res) => {
     try {
@@ -33,6 +34,18 @@ router.post('/', auth(), async (req, res) => {
              where t.id = ?`,
             [result.insertId]
         );
+
+        const task = tasks[0];
+        
+        
+        if (task.assigned_to) {
+            await sendNotification(
+                task.assigned_to,
+                `You've been assigned a new task: "${task.title}" by ${task.created_by_username}`,
+                'assignment',
+                task.id
+            );
+        }
         
         res.status(201).json(tasks[0]);
     } catch (err) {
@@ -143,6 +156,39 @@ router.patch('/:id/status', auth(), async (req, res) => {
             'update tasks set status = ? where id = ?',
             [status, id]
         );
+
+        const [updatedTasks] = await pool.execute(
+            `select t.*, u1.username as created_by_username, u2.username as assigned_to_username 
+             from tasks t 
+             left JOIN users u1 ON t.created_by = u1.id 
+             left JOIN users u2 ON t.assigned_to = u2.id 
+             where t.id = ?`,
+            [id]
+        );
+        
+        const updatedTask = updatedTasks[0];
+        
+        
+        if (updatedTask.assigned_to && updatedTask.assigned_to !== req.user.id) {
+            await sendNotification(
+                updatedTask.assigned_to,
+                `Task "${updatedTask.title}" status changed to ${status} by ${req.user.username}`,
+                'status_change',
+                updatedTask.id
+            );
+        }
+        
+        if (updatedTask.created_by !== req.user.id) {
+            await sendNotification(
+                updatedTask.created_by,
+                `Task "${updatedTask.title}" status changed to ${status} by ${req.user.username}`,
+                'status_change',
+                updatedTask.id
+            );
+        }
+
+
+
         
         res.json({ message: 'Task status updated successfully' });
     } catch (err) {
@@ -175,6 +221,38 @@ router.patch('/:id/assign', auth(['admin', 'manager']), async (req, res) => {
             'update tasks SET assigned_to = ? where id = ?',
             [assigned_to || null, id]
         );
+
+        const [updatedTasks] = await pool.execute(
+            `select t.*, u1.username as created_by_username, u2.username as assigned_to_username 
+             from tasks t 
+             left join users u1 ON t.created_by = u1.id 
+             left join users u2 ON t.assigned_to = u2.id 
+             where t.id = ?`,
+            [id]
+        );
+        
+        const updatedTask = updatedTasks[0];
+        
+        
+        if (updatedTask.assigned_to && updatedTask.assigned_to !== task.assigned_to) {
+            await sendNotification(
+                updatedTask.assigned_to,
+                `You've been assigned to task "${updatedTask.title}" by ${req.user.username}`,
+                'assignment',
+                updatedTask.id
+            );
+        }
+        
+        if (task.assigned_to && updatedTask.assigned_to !== task.assigned_to) {
+            await sendNotification(
+                task.assigned_to,
+                `You've been unassigned from task "${updatedTask.title}" by ${req.user.username}`,
+                'assignment',
+                updatedTask.id
+            );
+        }
+        
+        
         
         res.json({ message: 'Task assignment updated successfully' });
     } catch (err) {

@@ -9,7 +9,7 @@ router.post('/', auth(), async (req, res) => {
             return res.status(400).json({ message: 'Request body is empty' });
         }
 
-        
+
         const { title, description, assigned_to } = req.body;
         const created_by = req.user.id;
         
@@ -39,6 +39,56 @@ router.post('/', auth(), async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
+
+router.get('/', auth(), async (req, res) => {
+    try {
+        const { status, assigned_to } = req.query;
+        let query = `
+            select t.*, u1.username as created_by_username, u2.username as assigned_to_username 
+            from tasks t 
+            left join users u1 on t.created_by = u1.id 
+            left join users u2 on t.assigned_to = u2.id
+        `;
+        
+        const params = [];
+        const conditions = [];
+        
+        
+        if (req.user.role === 'user') {
+            conditions.push('(t.assigned_to = ? or t.created_by = ?)');
+            params.push(req.user.id, req.user.id);
+        }
+        
+        
+        if (status) {
+            conditions.push('t.status = ?');
+            params.push(status);
+        }
+        
+        
+        if (assigned_to) {
+            conditions.push('t.assigned_to = ?');
+            params.push(assigned_to);
+        }
+        
+        
+        if (conditions.length) {
+            query += ' where ' + conditions.join(' and ');
+        }
+        
+        query += ' order by t.created_at desc';
+        
+        const [tasks] = await pool.execute(query, params);
+        res.json(tasks);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+
+
 
 
 module.exports = router;

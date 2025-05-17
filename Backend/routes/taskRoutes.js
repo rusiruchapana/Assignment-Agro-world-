@@ -86,6 +86,39 @@ router.get('/', auth(), async (req, res) => {
     }
 });
 
+router.get('/:id', auth(), async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const [tasks] = await pool.execute(
+            `select t.*, u1.username as created_by_username, u2.username as assigned_to_username 
+             from tasks t 
+             left join users u1 ON t.created_by = u1.id 
+             left join users u2 ON t.assigned_to = u2.id 
+             where t.id = ?`,
+            [id]
+        );
+        
+        if (tasks.length === 0) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+        
+        const task = tasks[0];
+        
+        
+        if (task.assigned_to !== req.user.id && task.created_by !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized to view this task' });
+        }
+        
+        res.json(task);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+
+
 
 
 

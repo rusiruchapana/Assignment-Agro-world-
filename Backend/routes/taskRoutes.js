@@ -116,10 +116,71 @@ router.get('/:id', auth(), async (req, res) => {
     }
 });
 
+router.patch('/:id/status', auth(), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        
+        
+        const validStatuses = ['pending', 'in_progress', 'completed'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ message: 'Invalid status' });
+        }
+        
+        
+        const [tasks] = await pool.execute('select * from tasks where id = ?', [id]);
+        if (tasks.length === 0) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+        
+        const task = tasks[0];
+        if (task.assigned_to !== req.user.id && task.created_by !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized to update this task' });
+        }
+        
+        
+        await pool.execute(
+            'update tasks set status = ? where id = ?',
+            [status, id]
+        );
+        
+        res.json({ message: 'Task status updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 
 
-
-
+router.patch('/:id/assign', auth(['admin', 'manager']), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { assigned_to } = req.body;
+        
+        
+        const [tasks] = await pool.execute('select * from tasks where id = ?', [id]);
+        if (tasks.length === 0) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+        
+        
+        if (assigned_to) {
+            const [users] = await pool.execute('select * from users where id = ?', [assigned_to]);
+            if (users.length === 0) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+        }
+        
+        
+        await pool.execute(
+            'update tasks SET assigned_to = ? where id = ?',
+            [assigned_to || null, id]
+        );
+        
+        res.json({ message: 'Task assignment updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 
 
 

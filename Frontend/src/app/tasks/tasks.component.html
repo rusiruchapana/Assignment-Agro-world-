@@ -1,0 +1,113 @@
+<div class="tasks-container">
+  <div class="tasks-header">
+    <h1 class="tasks-title">My Tasks</h1>
+    <button class="create-button" (click)="showCreateModal = true">+ New Task</button>
+  </div>
+
+  <div *ngIf="loading" class="loading">Loading tasks...</div>
+
+  <table *ngIf="!loading" class="tasks-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Description</th>
+        <th>Status</th>
+        <th>Priority</th>
+        <th>Due Date</th>
+        <th>Created By</th>
+        <th>Assigned To</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let task of tasks">
+        <td>{{ task.title }}</td>
+        <td>{{ task.description }}</td>
+        <td>
+          <select
+            #statusSelect
+            class="status-select"
+            [ngClass]="'status-' + task.status"
+            [value]="task.status"
+            (change)="updateStatus(task.id, statusSelect.value)"
+          >
+            <option value="pending" class="status-pending">Pending</option>
+            <option value="in_progress" class="status-in_progress">In Progress</option>
+            <option value="completed" class="status-completed">Completed</option>
+          </select>
+        </td>
+        <td [ngClass]="'priority-' + task.priority">
+          {{ task.priority | titlecase }}
+        </td>
+        <td>{{ formatDate(task.due_date) }}</td>
+        <td>{{ task.created_by_username }}</td>
+        <td>{{ task.assigned_to_username || 'Unassigned' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div *ngIf="showCreateModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Create New Task</h2>
+        <button class="close-button" (click)="showCreateModal = false">&times;</button>
+      </div>
+      
+      <form class="task-form" (ngSubmit)="createTask()">
+        <div class="form-group">
+          <label for="title">Title</label>
+          <input 
+            type="text" 
+            id="title" 
+            [(ngModel)]="newTask.title" 
+            name="title" 
+            required
+            placeholder="Enter task title"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label for="description">Description</label>
+          <textarea 
+            id="description" 
+            [(ngModel)]="newTask.description" 
+            name="description"
+            placeholder="Enter task description"
+          ></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" [(ngModel)]="newTask.status" name="status">
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="priority">Priority</label>
+          <select id="priority" [(ngModel)]="newTask.priority" name="priority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="due_date">Due Date</label>
+          <input 
+            type="date" 
+            id="due_date" 
+            [(ngModel)]="newTask.due_date" 
+            name="due_date"
+          >
+        </div>
+        
+        <div class="form-actions">
+          <button type="button" class="cancel-button" (click)="showCreateModal = false">Cancel</button>
+          <button type="submit" class="submit-button">Create Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

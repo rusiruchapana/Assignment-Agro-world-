@@ -1,0 +1,21 @@
+<div class="app-container">
+  <nav class="navbar">
+    <a routerLink="/tasks" class="navbar-brand">{{ title }}</a>
+    <div class="navbar-links">
+      <a *ngIf="auth.isAuthenticated" routerLink="/tasks" class="nav-link">Tasks</a>
+      <button 
+        *ngIf="auth.isAuthenticated" 
+        class="logout-button"
+        (click)="auth.logout()"
+      >
+        Logout
+      </button>
+      <a *ngIf="!auth.isAuthenticated" routerLink="/login" class="nav-link">Login</a>
+      <a *ngIf="!auth.isAuthenticated" routerLink="/register" class="nav-link">Register</a>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>
